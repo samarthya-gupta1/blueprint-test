@@ -1,49 +1,100 @@
 {
-  "$schema": "https://facets-cloud.github.io/facets-schemas/schemas/service/service.schema.json",
   "flavor": "k8s",
   "metadata": {
-    "labels": {}
+    "labels": {
+      "deliveryType": "DEFAULT"
+    }
   },
   "kind": "service",
-  "disabled": true,
-  "provided": false,
+  "disabled": false,
   "version": "0.1",
   "spec": {
-    "enable_host_anti_affinity": false,
     "type": "application",
-    "release": {
-      "strategy": {
-        "type": "RollingUpdate"
-      },
-      "image": "image_url"
-    },
+    "restart_policy": "Always",
+    "enable_host_anti_affinity": false,
     "runtime": {
-      "autoscaling": {
-        "min": "1",
-        "max": "1",
-        "cpu_threshold": "50"
-      },
       "ports": {
-        "http": {
+        "ports1": {
           "port": "8080",
+          "service_port": "8080",
           "protocol": "tcp"
         }
       },
       "size": {
-        "cpu": "300m",
-        "memory": "1Gi",
-        "cpu_limit": "1000m"
+        "cpu": "100m",
+        "memory": "200Mi",
+        "cpu_limit": "1000m",
+        "memory_limit": "1Gi"
       },
       "health_checks": {
-        "timeout": "10",
-        "period": "30",
-        "port": "8080",
-        "start_up_time": "15"
+        "readiness_check_type": "HttpCheck",
+        "readiness_start_up_time": 15,
+        "readiness_timeout": 10,
+        "readiness_period": 30,
+        "readiness_port": "8080",
+        "readiness_url": "/",
+        "liveness_check_type": "HttpCheck",
+        "liveness_start_up_time": 15,
+        "liveness_timeout": 10,
+        "liveness_period": 30,
+        "liveness_port": "8080",
+        "liveness_url": "/"
       },
-      "volumes": {}
+      "autoscaling": {
+        "min": 1,
+        "max": 1,
+        "scaling_on": "CPU",
+        "cpu_threshold": "50"
+      },
+      "command": [
+        "python",
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8080",
+        "--workers",
+        "1"
+      ]
+    },
+    "release": {
+      "strategy": {
+        "type": "RollingUpdate"
+      },
+      "disruption_policy": {
+        "min_available": "1"
+      },
+      "image": "advanced"
     },
     "env": {
-      "LOG_LEVEL": "INFO"
+      "LOG_LEVEL": "INFO",
+      "SLD_STORAGE_BACKEND": "s3",
+      "PATH": "/home/sld/.asdf/shims:/home/sld/.asdf/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "SLD_BUCKET": "${s3.sld-remote-state.out.attributes.bucket_name}",
+      "AWS_DEFAULT_REGION": "ap-southeast-1",
+      "SLD_CONTAINER": "default",
+      "AZURE_STORAGE_CONNECTION_STRING": "default"
+    },
+    "cloud_permissions": {
+      "aws": {
+        "enable_irsa": false,
+        "iam_policies": {
+          "s3-remote-state": {
+            "arn": "${s3.sld-remote-state.out.attributes.read_write_iam_policy_arn}"
+          }
+        }
+      }
+    }
+  },
+  "advanced": {
+    "aws": {
+      "iam": {
+        "s3-remote-state": {
+          "arn": "${s3.sld-remote-state.out.attributes.read_write_iam_policy_arn}"
+        }
+      }
     }
   }
 }
